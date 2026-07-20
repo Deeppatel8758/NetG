@@ -1,0 +1,53 @@
+source:
+  type: kafka
+  kafka:
+    brokers: ["localhost:9092"]
+    topic: raw-flows
+    group_id: netguard-consumer
+
+features:
+  window_sizes: [60, 300, 3600]
+  store:
+    type: redis
+    redis_url: redis://localhost:6379/0
+
+models:
+  - type: half_space_trees
+    weight: 0.30
+    enabled: true
+    params:
+      n_trees: 30
+      height: 8
+      window_size: 1000
+
+  - type: autoencoder
+    weight: 0.30
+    enabled: true
+    params:
+      model_path: models/autoencoder_v1.pt
+
+  - type: xgboost_classifier
+    weight: 0.25
+    enabled: true
+    params:
+      model_path: models/xgb_cicids.json
+
+  - type: rules_engine
+    weight: 0.15
+    enabled: true
+    params: {}
+
+threshold:
+  strategy: adaptive
+  base_percentile: 99.5
+  window_size: 10000
+  fixed_value: 0.7
+
+outputs:
+  - type: console
+    min_severity: low
+
+server:
+  enabled: true
+  host: 0.0.0.0
+  port: 8080

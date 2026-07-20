@@ -1,0 +1,31 @@
+source:
+  type: memory
+  memory:
+    rate: 100
+
+features:
+  window_sizes: [10, 30, 60]
+  store:
+    type: memory
+
+models:
+  - type: half_space_trees
+    weight: 1.0
+    enabled: true
+    params:
+      n_trees: 20
+      height: 6
+      window_size: 500
+
+threshold:
+  strategy: fixed
+  fixed_value: 0.7
+
+outputs:
+  - type: console
+    min_severity: low
+
+server:
+  enabled: true
+  host: 0.0.0.0
+  port: 8080

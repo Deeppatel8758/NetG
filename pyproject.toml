@@ -1,0 +1,64 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "netguard"
+version = "0.1.0"
+description = "Real-time Network Intrusion Detection System with streaming ML"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+dependencies = [
+    "faust-streaming",
+    "aiokafka",
+    "redis[hiredis]",
+    "pydantic",
+    "pydantic-settings",
+    "fastapi",
+    "uvicorn",
+    "river",
+    "torch",
+    "xgboost",
+    "numpy",
+    "pandas",
+    "scipy",
+    "scikit-learn",
+    "httpx",
+    "rich",
+    "click",
+    "pyyaml",
+    "prometheus-client",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "ruff",
+    "mypy",
+    "testcontainers",
+]
+
+[project.scripts]
+netguard = "netguard.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/netguard"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+
+[tool.mypy]
+strict = false
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
