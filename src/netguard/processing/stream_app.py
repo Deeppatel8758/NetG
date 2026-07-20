@@ -17,11 +17,13 @@ import logging
 import faust
 
 from netguard.adapters.base import NetworkFlow
+from netguard.core.config import NetGuardConfig
+from netguard.features.extract import FeatureExtractor
 
 logger = logging.getLogger(__name__)
 
 
-def create_app(kafka_brokers: str = "localhost:9092") -> faust.App:
+def create_app(kafka_brokers: str = "localhost:9092", config: NetGuardConfig | None = None) -> faust.App:
     """Create and configure the Faust streaming app."""
     app = faust.App(
         "netguard",
@@ -29,6 +31,9 @@ def create_app(kafka_brokers: str = "localhost:9092") -> faust.App:
         value_serializer="json",
         logging_config=None,
     )
+
+    cfg = config or NetGuardConfig()
+    extractor = FeatureExtractor.from_config(cfg.features)
 
     # Define topics
     raw_flows_topic = app.topic("raw-flows", value_type=dict)
@@ -41,31 +46,17 @@ def create_app(kafka_brokers: str = "localhost:9092") -> faust.App:
         async for event in stream:
             flow_count += 1
 
-            # Parse into NetworkFlow
             try:
-                flow = NetworkFlow(
-                    timestamp=event.get("timestamp", 0),
-                    src_ip=event.get("src_ip", ""),
-                    dst_ip=event.get("dst_ip", ""),
-                    src_port=event.get("src_port", 0),
-                    dst_port=event.get("dst_port", 0),
-                    protocol=event.get("protocol", "TCP"),
-                    duration=event.get("duration", 0),
-                    bytes_fwd=event.get("bytes_fwd", 0),
-                    bytes_bwd=event.get("bytes_bwd", 0),
-                    packets_fwd=event.get("packets_fwd", 0),
-                    packets_bwd=event.get("packets_bwd", 0),
-                    tcp_flags=event.get("tcp_flags", {}),
-                    payload_entropy=event.get("payload_entropy", 0.0),
-                )
+                flow = NetworkFlow.from_dict(event)
             except Exception as e:
                 logger.warning(f"Failed to parse flow: {e}")
                 continue
 
-            if flow_count % 1000 == 0:
-                logger.info(f"Processed {flow_count} flows")
+            features = await extractor.extract(flow)
 
-            # TODO Phase 2: Extract features
+            if flow_count % 1000 == 0:
+                logger.info("Processed %d flows | %d features/flow", flow_count, len(features))
+
             # TODO Phase 3: Score with models
             # TODO Phase 4: Check threshold, generate alerts
 
