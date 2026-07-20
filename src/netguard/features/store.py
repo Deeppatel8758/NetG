@@ -191,17 +191,17 @@ _SEEN_KEY = "seen:{kind}:{src_ip}"
 _IDLE_TTL_SEC = _MAX_WINDOW_SEC * 2
 
 
-def _encode_event(ev: _FlowEvent) -> str:
-    """Pack a flow event into a compact CSV-ish string for Redis sorted-set members.
+def _encode_event(ev: _FlowEvent, seq: int) -> str:
+    """Pack a flow event into a unique CSV-ish string for Redis sorted-set members.
 
-    We can't just use the timestamp as the member (many flows share a timestamp),
-    so members carry both the score and the payload.
+    Sorted sets deduplicate identical members, so a monotonic ``seq`` disambiguates
+    otherwise-identical flows (same src/dst/port/bytes/flags at the same timestamp).
     """
-    return f"{ev.ts}|{ev.dst_ip}|{ev.dst_port}|{ev.bytes_out}|{ev.bytes_in}|{int(ev.is_syn_only)}"
+    return f"{seq}|{ev.ts}|{ev.dst_ip}|{ev.dst_port}|{ev.bytes_out}|{ev.bytes_in}|{int(ev.is_syn_only)}"
 
 
 def _decode_event(raw: str) -> _FlowEvent:
-    ts, dst_ip, dst_port, bytes_out, bytes_in, is_syn = raw.split("|")
+    _seq, ts, dst_ip, dst_port, bytes_out, bytes_in, is_syn = raw.split("|")
     return _FlowEvent(
         ts=float(ts),
         dst_ip=dst_ip,
@@ -228,6 +228,7 @@ class RedisStore(FeatureStore):
 
         self._max_window_sec = max_window_sec
         self._redis: Redis = Redis.from_url(url, decode_responses=True)
+        self._seq = 0
 
     async def record_flow(
         self,
@@ -250,8 +251,9 @@ class RedisStore(FeatureStore):
         )
         cutoff = timestamp - self._max_window_sec
 
+        self._seq += 1
         pipe = self._redis.pipeline(transaction=False)
-        pipe.zadd(key, {_encode_event(event): timestamp})
+        pipe.zadd(key, {_encode_event(event, self._seq): timestamp})
         pipe.zremrangebyscore(key, "-inf", cutoff)
         pipe.expire(key, _IDLE_TTL_SEC)
         await pipe.execute()
