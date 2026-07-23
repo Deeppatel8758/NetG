@@ -32,7 +32,7 @@ class StoreConfig(BaseModel):
 
 
 class FeaturesConfig(BaseModel):
-    window_sizes: list[int] = Field(default_factory=lambda: [10, 30, 60, 300])
+    window_sizes: list[int] = Field(default_factory=lambda: [60, 300])
     store: StoreConfig = Field(default_factory=StoreConfig)
 
 
@@ -48,6 +48,7 @@ class ThresholdConfig(BaseModel):
     base_percentile: float = 95.0
     window_size: int = 1000
     fixed_value: float = 0.7
+    warmup: int = 200
 
 
 class OutputConfig(BaseModel):

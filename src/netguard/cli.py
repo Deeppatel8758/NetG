@@ -249,6 +249,37 @@ async def _replay(input_path, fmt, speed_mult, output):
 
 
 @main.command()
+@click.argument("model", type=click.Choice(["autoencoder", "xgboost", "all"]))
+@click.option("--flows", default=20_000, help="Benign flows for AE; ignored for XGBoost")
+@click.option("--epochs", default=20, help="AE training epochs")
+@click.option("--benign", default=20_000, help="Benign flows for XGBoost")
+@click.option("--attack", default=3_000, help="Flows per attack class for XGBoost")
+@click.option("--out", default=None, help="Output path; defaults to bundled location")
+def train(model, flows, epochs, benign, attack, out):
+    """Train and save pretrained model files."""
+    import sys
+    from pathlib import Path
+
+    # Make scripts/ importable
+    scripts_dir = Path(__file__).resolve().parents[2] / "scripts"
+    sys.path.insert(0, str(scripts_dir))
+
+    if model in ("autoencoder", "all"):
+        click.echo(click.style("Training autoencoder...", fg="cyan"))
+        import train_autoencoder
+
+        train_autoencoder.main(flows=flows, epochs=epochs, out=out if model == "autoencoder" else None)
+
+    if model in ("xgboost", "all"):
+        click.echo(click.style("Training XGBoost classifier...", fg="cyan"))
+        import train_xgboost
+
+        train_xgboost.main(benign=benign, attack=attack, out=out if model == "xgboost" else None)
+
+    click.echo(click.style("Training complete.", fg="green"))
+
+
+@main.command()
 @click.option(
     "--config", "-c", default="configs/default.yaml", help="Config file to validate"
 )

@@ -6,7 +6,7 @@ source:
     group_id: netguard-consumer
 
 features:
-  window_sizes: [60, 300, 3600]
+  window_sizes: [60, 300]
   store:
     type: redis
     redis_url: redis://localhost:6379/0
@@ -24,13 +24,13 @@ models:
     weight: 0.30
     enabled: true
     params:
-      model_path: models/autoencoder_v1.pt
+      model_path: autoencoder_v1.pt
 
   - type: xgboost_classifier
     weight: 0.25
     enabled: true
     params:
-      model_path: models/xgb_cicids.json
+      model_path: xgboost_v1.json
 
   - type: rules_engine
     weight: 0.15
@@ -42,6 +42,7 @@ threshold:
   base_percentile: 99.5
   window_size: 10000
   fixed_value: 0.7
+  warmup: 200
 
 outputs:
   - type: console

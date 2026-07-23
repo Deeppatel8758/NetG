@@ -4,7 +4,7 @@ source:
     rate: 100
 
 features:
-  window_sizes: [10, 30, 60]
+  window_sizes: [60, 300]
   store:
     type: memory
 
